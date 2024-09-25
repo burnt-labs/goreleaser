@@ -14,6 +14,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
 jobs:
   build:
     name: "Build Images"
@@ -26,11 +31,6 @@ jobs:
           - selector: burnt-labs-arm64
             platform: linux/arm64
     runs-on: ${{ matrix.runner.selector }}
-
-    permissions:
-      id-token: write
-      contents: read
-      packages: write
 
     steps:
       - name: Check out code
@@ -92,11 +92,6 @@ jobs:
     name: "Push Images"
     needs: build
     runs-on: ubuntu-latest
-
-    permissions:
-      id-token: write
-      contents: read
-      packages: write
 
     steps:
       - name: Login to GitHub Container Registry
