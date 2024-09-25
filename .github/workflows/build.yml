@@ -110,6 +110,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}
+          merge-multiple: true
 
       - name: Metadata for container
         id: meta
