@@ -6,14 +6,22 @@ on:
     branches:
       - main
   push:
-    tags:
-      - 'v[0-9]+\.[0-9]+\.[0-9]+'
-      - 'v[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+'
+    branches:
+      - main
 
 jobs:
   build-push:
     name: "Build/Push Image"
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - 1.21.5
+          - 1.21.13
+          - 1.22.7
+          - 1.23.1
 
     permissions:
       id-token: write
@@ -34,10 +42,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=sha
-            type=semver,pattern={{version}},enable=${{ github.event_name == 'push' }}
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ matrix.version }}
 
       - name: Build and push
         id: build
@@ -48,4 +53,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}
           platforms: linux/amd64,linux/arm64
-          push: true
+          build-args: |
+            GORELEASER_VERSION=v${{ matrix.version }}
+          push: ${{ if github.event_name == 'push' && github.ref == 'refs/heads/main' }}
