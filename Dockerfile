@@ -1,6 +1,6 @@
 ARG GORELEASER_VERSION=v1.22.7
 
-FROM goreleaser/goreleaser-cross:${GORELEASER_VERSION} AS builder
+FROM goreleaser/goreleaser-cross:${GORELEASER_VERSION}
 
 # Install build dependencies
 RUN  apt-get update \

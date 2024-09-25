@@ -11,9 +11,17 @@ on:
       - 'v[0-9]+\.[0-9]+\.[0-9]+-rc[0-9]+'
 
 jobs:
-  build-push:
-    name: "Build/Push Image"
-    runs-on: ubuntu-latest
+  build:
+    name: "Build Images"
+    strategy:
+      fail-fast: false
+      matrix:
+        runner:
+          - selector: ubuntu-latest
+            platform: linux/amd64
+          - selector: burnt-labs-arm64
+            platform: linux/arm64
+    runs-on: ${{ matrix.runner.selector }}
 
     permissions:
       id-token: write
@@ -39,15 +47,58 @@ jobs:
             type=semver,pattern={{version}},enable=${{ github.event_name == 'push' }}
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push
+      - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v5
         with:
-          cache-from: type=gha,scope=${{ github.ref_name }}
-          cache-to: type=gha,mode=max,scope=${{ github.ref_name }}
+          context: ${{ steps.prepare.outputs.build_context }}
+          cache-from: type=gha,scope=${{ github.ref_name }}/${{ matrix.runner.platform }}
+          cache-to: type=gha,mode=max,scope=${{ github.ref_name }}/${{ matrix.runner.platform }}
           labels: ${{ steps.meta.outputs.labels }}
-          tags: ${{ steps.meta.outputs.tags }}
-          platforms: linux/amd64,linux/arm64
-          build-args: |
-            GORELEASER_VERSION=${{ github.ref_name }}
-          push: true
+          platforms: ${{ matrix.runner.platform }}
+          outputs: type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/${{ github.run_id }}/*
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/${{ github.run_id }}/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.prepare.outputs.digest_name }}
+          path: /tmp/${{ github.run_id }}/*
+          if-no-files-found: error
+          retention-days: 3
+
+  push:
+    name: "Push Images"
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v3
+        with:
+          path: /tmp/{{ github.run_id }}
+
+      - name: Metadata for container
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=sha
+            type=semver,pattern={{version}},enable=${{ github.event_name == 'push' }}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/${{ github.run_id }}
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf 'ghcr.io/${{ github.repository }}@sha256:%s ' *)
+
+      - name: Inspect merged image
+        run: |
+          jq -cr '.tags | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON" | \
+          xargs -n1 docker buildx imagetools inspect
