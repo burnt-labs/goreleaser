@@ -16,11 +16,11 @@ ENV OSX_CROSS_PATH=/usr/local/osxcross
 
 # Build osxcross
 # See https://github.com/tpoechtrager/osxcross/blob/master/build.sh#L31-L49 for SDK overview.
-RUN git clone https://github.com/tpoechtrager/osxcross \
-  && cd $(basename ${OSX_CROSS_PATH}) \
+RUN rm -rf ${OSX_CROSS_PATH} \
+  && git clone https://github.com/tpoechtrager/osxcross ${OSX_CROSS_PATH} \
+  && cd ${OSX_CROSS_PATH} \
   # Don't change file name when downloading because osxcross auto-detects the version from the name
-  && wget -nc https://github.com/phracker/MacOSX-SDKs/releases/download/11.3/MacOSX11.3.sdk.tar.xz \
-  && mv MacOSX11.3.sdk.tar.xz tarballs/ \
+  && wget https://github.com/phracker/MacOSX-SDKs/releases/download/11.3/MacOSX11.3.sdk.tar.xz -P tarballs \
   && UNATTENDED=yes OSX_VERSION_MIN=10.15 ./build.sh \
   # Cleanups before Docker layer is finalized
   && rm -r tarballs/ \
