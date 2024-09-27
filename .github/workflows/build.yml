@@ -59,6 +59,11 @@ jobs:
             type=semver,pattern={{version}},enable=${{ github.event_name == 'push' }}
             type=raw,value=latest,enable={{is_default_branch}}
 
+      - name: Setup env
+        uses: c-py/action-dotenv-to-setenv@v3
+        with:
+          env-file: /home/runner/_work/goreleaser-cross/goreleaser-cross/.env
+
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v5
