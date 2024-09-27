@@ -62,6 +62,8 @@ jobs:
       - name: Setup env
         run: |
           cat /home/runner/_work/goreleaser-cross/goreleaser-cross/.env >> ${GITHUB_ENV}
+          # overide min version
+          echo "OSX_VERSION_MIN=10.12" >> ${GITHUB_ENV}
 
       - name: Add to dockerfile
         working-directory: /home/runner/_work/goreleaser-cross/goreleaser-cross
