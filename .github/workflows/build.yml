@@ -60,9 +60,15 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
 
       - name: Setup env
-        uses: c-py/action-dotenv-to-setenv@v3
-        with:
-          env-file: /home/runner/_work/goreleaser-cross/goreleaser-cross/.env
+        run: |
+          cat /home/runner/_work/goreleaser-cross/goreleaser-cross/.env >> ${GITHUB_ENV}
+
+      - name: Add to dockerfile
+        working-directory: /home/runner/_work/goreleaser-cross/goreleaser-cross
+        run: |
+          echo "FROM ghcr.io/goreleaser/goreleaser$GORELEASER_DISTRIBUTION:v$GORELEASER_VERSION$GORELEASER_DISTRIBUTION as goreleaser >> Dockerfile.base
+          echo "FROM ghcr.io/goreleaser/goreleaser-cross-base:$TAG_VERSION" >> Dockerfile.base
+          echo "COPY --from=goreleaser /usr/bin/goreleaser /usr/bin/goreleaser" >> Dockerfile.base
 
       - name: Build and push by digest
         id: build
@@ -75,6 +81,16 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           platforms: ${{ matrix.os }}/${{ matrix.arch }}
           outputs: type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
+          build-args: |
+            TAG_VERSION=${{ env.TAG_VERSION }}
+            GORELEASER_VERSION=${{ env.GORELEASER_VERSION }}
+            DEBIAN_FRONTEND=${{ env.DEBIAN_FRONTEND }}
+            GO_VERSION=${{ env.GO_VERSION }}
+            TINI_VERSION=${{ env.TINI_VERSION }}
+            COSIGN_VERSION=${{ env.COSIGN_VERSION }}
+            COSIGN_SHA256=${{ env.COSIGN_SHA256 }}
+            DEBIAN_FRONTEND=${{ env.DEBIAN_FRONTEND }}
+            TOOLCHAINS_VERSION=${{ env.TOOLCHAINS_VERSION }}
 
       - name: Export digest
         id: digest
