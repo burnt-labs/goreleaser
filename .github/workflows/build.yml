@@ -2,9 +2,6 @@ name: build
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-      - main
   push:
     tags:
       - 'v[0-9]+\.[0-9]+\.[0-9]+'
@@ -25,16 +22,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner:
-          - selector: burnt-labs-amd64
-            platform: linux/amd64
-          - selector: burnt-labs-arm64
-            platform: linux/arm64
-    runs-on: ${{ matrix.runner.selector }}
+        os:
+          - linux
+        arch:
+          - amd64
+          - arm64
+    runs-on: burnt-labs-${{ matrix.arch }}
 
     steps:
       - name: Check out code
         uses: actions/checkout@v4
+        with:
+          repository: goreleaser/goreleaser-cross
+          ref: ${{ github.ref }}
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -63,10 +63,10 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          cache-from: type=gha,scope=${{ github.ref_name }}/${{ matrix.runner.platform }}
-          cache-to: type=gha,mode=max,scope=${{ github.ref_name }}/${{ matrix.runner.platform }}
+          cache-from: type=gha,scope=${{ github.ref_name }}/${{ matrix.os }}/${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ github.ref_name }}/${{ matrix.os }}/${{ matrix.arch }}
           labels: ${{ steps.meta.outputs.labels }}
-          platforms: ${{ matrix.runner.platform }}
+          platforms: ${{ matrix.os }}/${{ matrix.arch }}
           outputs: type=image,name=ghcr.io/${{ github.repository }},push-by-digest=true,name-canonical=true,push=true
 
       - name: Export digest
@@ -77,14 +77,14 @@ jobs:
 
       - name: Create digest file
         run: |
-          mkdir -p ${{ runner.temp }}/${{ matrix.runner.platform }}
-          touch ${{ runner.temp }}/${{ matrix.runner.platform }}/${{ steps.digest.outputs.digest }}
+          mkdir -p ${{ runner.temp }}/${{ matrix.os }}/${{ matrix.arch }}
+          touch ${{ runner.temp }}/${{ matrix.os }}/${{ matrix.arch }}/${{ steps.digest.outputs.digest }}
 
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.digest.outputs.digest }}
-          path: ${{ runner.temp }}/${{ matrix.runner.platform }}/${{ steps.digest.outputs.digest }}
+          path: ${{ runner.temp }}/${{ matrix.os }}/${{ matrix.arch }}/${{ steps.digest.outputs.digest }}
           if-no-files-found: error
           retention-days: 3
 
