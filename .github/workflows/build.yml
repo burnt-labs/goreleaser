@@ -66,7 +66,7 @@ jobs:
       - name: Add to dockerfile
         working-directory: /home/runner/_work/goreleaser-cross/goreleaser-cross
         run: |
-          echo "FROM ghcr.io/goreleaser/goreleaser$GORELEASER_DISTRIBUTION:v$GORELEASER_VERSION$GORELEASER_DISTRIBUTION as goreleaser >> Dockerfile.base
+          echo "FROM ghcr.io/goreleaser/goreleaser$GORELEASER_DISTRIBUTION:v$GORELEASER_VERSION$GORELEASER_DISTRIBUTION AS goreleaser" >> Dockerfile.base
           echo "FROM ghcr.io/goreleaser/goreleaser-cross-base:$TAG_VERSION" >> Dockerfile.base
           echo "COPY --from=goreleaser /usr/bin/goreleaser /usr/bin/goreleaser" >> Dockerfile.base
 
